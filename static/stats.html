@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAZE DASH · 랭킹</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Black+Han+Sans&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#0b0618; --card:#1a1033; --line:#3b2a6b; --text:#ede9fe; --muted:#a79bd1; --accent:#22d3ee; --pink:#e879f9;
+          --pixel:"Press Start 2P","Black Han Sans",monospace; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--text); font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif;
+         background:radial-gradient(ellipse at top,#241346 0%,var(--bg) 60%) fixed; min-height:100vh; }
+  .wrap { max-width:680px; margin:0 auto; padding:16px; }
+  header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
+  h1 { margin:10px 0; font-family:"Black Han Sans","Pretendard","Malgun Gothic",sans-serif; font-size:1.7rem; font-weight:400;
+       background:linear-gradient(90deg,var(--accent),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  a { color:var(--accent); text-decoration:none; }
+  .tabs { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+  .tabs button { border:2px solid var(--line); background:var(--card); color:var(--muted); padding:7px 12px; border-radius:9px;
+                 font-size:.95rem; font-family:"Black Han Sans",inherit; cursor:pointer; }
+  .tabs button.on { background:linear-gradient(135deg,var(--accent),var(--pink)); color:#10061f; border-color:transparent; }
+  .card { background:var(--card); border:2px solid var(--line); border-radius:14px; padding:16px; margin-top:12px; }
+  .card h2 { margin:0 0 10px; font-size:1rem; color:var(--muted); font-family:"Black Han Sans",inherit; font-weight:400; }
+  .podium { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:12px; }
+  .pod { border-radius:12px; padding:12px 6px; text-align:center; border:2px solid; }
+  .pod .m { font-size:1.8rem; } .pod .n { font-weight:700; margin:4px 0 2px; word-break:break-all; }
+  .pod .t { font-family:var(--pixel); font-size:.65rem; line-height:1.6; }
+  .p1 { border-color:#facc15; background:rgba(250,204,21,.12); }
+  .p2 { border-color:#cbd5e1; background:rgba(203,213,225,.10); }
+  .p3 { border-color:#fb923c; background:rgba(251,146,60,.10); }
+  .pod.empty { opacity:.35; }
+  table { width:100%; border-collapse:collapse; font-size:.95rem; }
+  th, td { padding:8px 4px; text-align:center; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:.85rem; }
+  .sum { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center; }
+  .sum b { display:block; font-family:var(--pixel); font-size:1.1rem; font-weight:400; color:var(--accent); margin-bottom:6px; }
+  .sum span { color:var(--muted); font-size:.85rem; }
+  .scroll { overflow-x:auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>🏆 랭킹</h1><a href="/">← MAZE DASH</a></header>
+  <div class="tabs" id="tabs"></div>
+  <div class="card"><h2 id="title"></h2>
+    <div class="podium" id="podium"></div>
+    <div class="scroll"><table id="rank"></table></div>
+  </div>
+  <div class="card"><h2>전체 기록 요약</h2><div class="sum">
+    <div><b id="total">-</b><span>총 기록 수</span></div>
+    <div><b id="avg">-</b><span>평균 시간(초)</span></div>
+    <div><b id="players">-</b><span>참가자 수</span></div>
+  </div></div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const medal = ['🥇', '🥈', '🥉'];
+const sec = ms => (ms / 1000).toFixed(2);
+let tab = 'total';
+
+function drawTabs() {
+  const items = [['total', '전체'], ...Array.from({ length: 10 }, (_, i) => [String(i + 1), '퀘스트 ' + (i + 1)])];
+  $('tabs').innerHTML = items.map(([k, label]) => `<button data-k="${k}" class="${k === tab ? 'on' : ''}">${label}</button>`).join('');
+  $('tabs').querySelectorAll('button').forEach(b => b.onclick = () => { tab = b.dataset.k; drawTabs(); load(); });
+}
+function podium(items) {   // items: [{name, label}]
+  $('podium').innerHTML = [0, 1, 2].map(i => {
+    const r = items[i];
+    return r ? `<div class="pod p${i + 1}"><div class="m">${medal[i]}</div><div class="n">${esc(r.name)}</div><div class="t">${r.label}</div></div>`
+             : `<div class="pod p${i + 1} empty"><div class="m">${medal[i]}</div><div class="n">-</div><div class="t">--</div></div>`;
+  }).join('');
+}
+async function load() {
+  if (tab === 'total') {
+    const d = await (await fetch('/api/total')).json();
+    $('title').textContent = `전체 랭킹 (클리어한 퀘스트 수 → 총 시간)`;
+    podium(d.top.map(r => ({ name: r.nickname, label: `${r.cleared}/${d.quest_count}<br>${sec(r.total_ms)}s` })));
+    $('rank').innerHTML = '<tr><th>순위</th><th>닉네임</th><th>클리어</th><th>총 시간</th></tr>' +
+      (d.top.map((r, i) => `<tr><td>${medal[i] || i + 1}</td><td>${esc(r.nickname)}</td><td>${r.cleared} / ${d.quest_count}</td><td><b>${sec(r.total_ms)}초</b></td></tr>`).join('') || '<tr><td colspan="4">아직 기록이 없어요</td></tr>');
+  } else {
+    const d = await (await fetch(`/api/ranking?quest=${tab}`)).json();
+    $('title').textContent = `퀘스트 ${tab} · TOP 10`;
+    podium(d.top.map(r => ({ name: r.nickname, label: sec(r.time_ms) + 's' })));
+    $('rank').innerHTML = '<tr><th>순위</th><th>닉네임</th><th>시간</th><th>이동</th><th>날짜</th></tr>' +
+      (d.top.map((r, i) => `<tr><td>${medal[i] || i + 1}</td><td>${esc(r.nickname)}</td><td><b>${sec(r.time_ms)}초</b></td><td>${r.moves}</td><td>${r.created_at.slice(5, 10)}</td></tr>`).join('') || '<tr><td colspan="5">아직 기록이 없어요</td></tr>');
+  }
+  const s = await (await fetch('/api/stats')).json();
+  $('total').textContent = s.total; $('avg').textContent = s.avg_sec || '-'; $('players').textContent = s.players;
+}
+const q = new URLSearchParams(location.search).get('quest'); if (q) tab = q;
+drawTabs(); load(); setInterval(load, 5000);
+</script>
+</body>
+</html>
