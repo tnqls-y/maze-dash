@@ -50,7 +50,7 @@
   #reg input { background:#0b0618; border:2px solid var(--line); color:var(--text); border-radius:8px; padding:9px 10px; font-size:1rem; width:150px; }
   #reg button { border:0; border-radius:8px; padding:10px 16px; background:var(--accent); color:#10061f; cursor:pointer; font-size:1rem; font-family:inherit; }
   #reg button:disabled { opacity:.5; }
-  .keys { display:flex; justify-content:center; gap:10px; margin:18px 0 4px; }
+  .keys { display:grid; grid-template-areas:". u ." "l d r"; grid-template-columns:repeat(3,66px); justify-content:center; gap:8px; margin:18px 0 4px; }
   .key { width:66px; padding:8px 0; background:var(--card); border:2px solid var(--line); border-bottom-width:5px; border-radius:12px; user-select:none; touch-action:none; cursor:pointer; }
   .key b { display:block; font-family:var(--pixel); font-size:1.15rem; font-weight:400; margin:4px 0; color:var(--accent); }
   .key span { font-size:.8rem; color:var(--muted); font-family:"Pretendard","Malgun Gothic",system-ui,sans-serif; }
@@ -92,12 +92,12 @@
   </div>
 
   <div class="keys">
-    <div class="key" data-code="KeyQ" data-dx="-1" data-dy="0"><b>Q</b><span>← 왼쪽</span></div>
-    <div class="key" data-code="KeyW" data-dx="0" data-dy="1"><b>W</b><span>↓ 아래</span></div>
-    <div class="key" data-code="KeyO" data-dx="0" data-dy="-1"><b>O</b><span>↑ 위</span></div>
-    <div class="key" data-code="KeyP" data-dx="1" data-dy="0"><b>P</b><span>→ 오른쪽</span></div>
+    <div class="key" style="grid-area:u" data-code="ArrowUp" data-dx="0" data-dy="-1"><b>↑</b></div>
+    <div class="key" style="grid-area:l" data-code="ArrowLeft" data-dx="-1" data-dy="0"><b>←</b></div>
+    <div class="key" style="grid-area:d" data-code="ArrowDown" data-dx="0" data-dy="1"><b>↓</b></div>
+    <div class="key" style="grid-area:r" data-code="ArrowRight" data-dx="1" data-dy="0"><b>→</b></div>
   </div>
-  <div class="hint ui">키보드 Q W O P (한글 입력 상태여도 됩니다) · <b>Enter</b>로 시작 · 폰은 위 버튼을 누르세요</div>
+  <div class="hint ui">키보드 방향키 ← ↑ ↓ → · <b>Enter</b>로 시작 · 폰은 위 버튼을 누르세요</div>
   <p class="ui"><a href="/stats">🏆 랭킹 보기 →</a> &nbsp;·&nbsp; <a href="#" id="resetBtn" style="color:var(--muted)">↺ 내 진행 초기화</a></p>
 </div>
 
@@ -230,7 +230,7 @@ function newMaze() {
   $('timer').textContent = '0.00'; $('myMoves').textContent = 0;
   $('shortest').textContent = `(최단 ${shortest}칸)`;
   $('qinfo').textContent = `QUEST ${quest} · ${TIER(quest - 1)}${dark ? ' · 🌙 Dark Mode' : ''} · ${(N - 1) / 2}×${(N - 1) / 2}`;
-  $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
+  $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
   const myBest = progress.best[quest];
   $('best').textContent = myBest ? `내 최고 기록 ${fmt(myBest)}초 ${starStr(progress.stars[quest] || 1)}` : '';
   $('status').textContent = 'START를 누르면 타이머가 시작돼요.';
@@ -272,8 +272,8 @@ function win() {
   lastResult = { quest, moves, time_ms: ms };
   const allClear = QUESTS.every((_, i) => (progress.stars[i + 1] || 0) >= 1);
   $('status').textContent = quest === 10 && allClear
-    ? ` ALL CLEAR! ${starStr(stars)}`
-    : ` CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
+    ? `🏆 ALL CLEAR! ${starStr(stars)}`
+    : `🎉 CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
   $('best').textContent = `내 최고 기록 ${fmt(progress.best[quest])}초 ${starStr(progress.stars[quest])}`;
   $('startBtn').textContent = 'RETRY'; $('startBtn').disabled = false;
   $('nextBtn').style.display = quest < QUESTS.length ? 'inline-block' : 'none';
@@ -312,7 +312,7 @@ function loadTop() {
   if (location.protocol === 'file:') return;
   fetch(`/api/ranking?quest=${quest}`).then(r => r.json()).then(d => {
     const t = d.top && d.top[0];
-    $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
+    $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
   }).catch(() => {});
 }
 $('regBtn').onclick = () => {
@@ -328,8 +328,8 @@ $('regBtn').onclick = () => {
     .catch(() => { $('regBtn').disabled = false; $('regMsg').textContent = '등록에 실패했어요. 다시 눌러 주세요.'; });
 };
 
-/* ---------- 입력: Q W O P ---------- */
-const KEYMAP = { KeyQ: [-1, 0], KeyW: [0, 1], KeyO: [0, -1], KeyP: [1, 0] };   // 왼쪽 / 아래 / 위 / 오른쪽
+/* ---------- 입력: 방향키 ---------- */
+const KEYMAP = { ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1], ArrowRight: [1, 0] };
 const keyEl = {}; document.querySelectorAll('.key').forEach(el => { keyEl[el.dataset.code] = el; });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter') {                                  // Enter: 시작 / 다시 시작 (닉네임 입력 중에는 등록)
@@ -354,7 +354,7 @@ $('startBtn').onclick = () => {
   if (running) return;
   if (finished) newMaze();                       // RETRY: 같은 퀘스트(같은 미로)를 처음부터
   running = true; t0 = performance.now();
-  $('status').textContent = 'GO! Q W O P 로 이동!';
+  $('status').textContent = 'GO! 방향키로 이동!';
   $('startBtn').textContent = 'RUNNING...'; $('startBtn').disabled = true;
   $('nextBtn').style.display = 'none'; $('reg').classList.remove('show');
   document.activeElement && document.activeElement.blur();
