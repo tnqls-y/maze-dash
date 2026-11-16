@@ -68,7 +68,7 @@
 
   <div class="quests" id="quests"></div>
   <div class="qinfo ui" id="qinfo"></div>
-  <label class="chk ui"><input type="checkbox" id="demo"> 🔓 Demo (모든 퀘스트 열기)</label>
+  <label class="chk ui"><input type="checkbox" id="demo">  Demo (모든 퀘스트 열기)</label>
 
   <canvas id="cv"></canvas>
 
@@ -92,10 +92,10 @@
   </div>
 
   <div class="keys">
-    <div class="key" style="grid-area:u" data-code="ArrowUp" data-dx="0" data-dy="-1"><b>↑</b></div>
-    <div class="key" style="grid-area:l" data-code="ArrowLeft" data-dx="-1" data-dy="0"><b>←</b></div>
-    <div class="key" style="grid-area:d" data-code="ArrowDown" data-dx="0" data-dy="1"><b>↓</b></div>
-    <div class="key" style="grid-area:r" data-code="ArrowRight" data-dx="1" data-dy="0"><b>→</b></div>
+    <div class="key" style="grid-area:u" data-code="ArrowUp" data-dx="0" data-dy="-1"><b><svg viewBox="0 0 24 24" width="26" height="26" style="display:block;margin:6px auto;transform:rotate(0deg)"><path d="M12 3 L21 13 H15 V21 H9 V13 H3 Z" fill="currentColor"/></svg></b></div>
+    <div class="key" style="grid-area:l" data-code="ArrowLeft" data-dx="-1" data-dy="0"><b><svg viewBox="0 0 24 24" width="26" height="26" style="display:block;margin:6px auto;transform:rotate(270deg)"><path d="M12 3 L21 13 H15 V21 H9 V13 H3 Z" fill="currentColor"/></svg></b></div>
+    <div class="key" style="grid-area:d" data-code="ArrowDown" data-dx="0" data-dy="1"><b><svg viewBox="0 0 24 24" width="26" height="26" style="display:block;margin:6px auto;transform:rotate(180deg)"><path d="M12 3 L21 13 H15 V21 H9 V13 H3 Z" fill="currentColor"/></svg></b></div>
+    <div class="key" style="grid-area:r" data-code="ArrowRight" data-dx="1" data-dy="0"><b><svg viewBox="0 0 24 24" width="26" height="26" style="display:block;margin:6px auto;transform:rotate(90deg)"><path d="M12 3 L21 13 H15 V21 H9 V13 H3 Z" fill="currentColor"/></svg></b></div>
   </div>
   <div class="hint ui">키보드 방향키 ← ↑ ↓ → · <b>Enter</b>로 시작 · 폰은 위 버튼을 누르세요</div>
   <p class="ui"><a href="/stats">🏆 랭킹 보기 →</a> &nbsp;·&nbsp; <a href="#" id="resetBtn" style="color:var(--muted)">↺ 내 진행 초기화</a></p>
@@ -229,8 +229,8 @@ function newMaze() {
   t3 = Math.round(shortest * 0.25 * mul); t2 = Math.round(shortest * 0.5 * mul);
   $('timer').textContent = '0.00'; $('myMoves').textContent = 0;
   $('shortest').textContent = `(최단 ${shortest}칸)`;
-  $('qinfo').textContent = `QUEST ${quest} · ${TIER(quest - 1)}${dark ? ' · 🌙 Dark Mode' : ''} · ${(N - 1) / 2}×${(N - 1) / 2}`;
-  $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
+  $('qinfo').textContent = `QUEST ${quest} · ${TIER(quest - 1)}${dark ? ' ·  Dark Mode' : ''} · ${(N - 1) / 2}×${(N - 1) / 2}`;
+  $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
   const myBest = progress.best[quest];
   $('best').textContent = myBest ? `내 최고 기록 ${fmt(myBest)}초 ${starStr(progress.stars[quest] || 1)}` : '';
   $('status').textContent = 'START를 누르면 타이머가 시작돼요.';
@@ -272,8 +272,8 @@ function win() {
   lastResult = { quest, moves, time_ms: ms };
   const allClear = QUESTS.every((_, i) => (progress.stars[i + 1] || 0) >= 1);
   $('status').textContent = quest === 10 && allClear
-    ? `🏆 ALL CLEAR! ${starStr(stars)}`
-    : `🎉 CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
+    ? ` ALL CLEAR! ${starStr(stars)}`
+    : ` CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
   $('best').textContent = `내 최고 기록 ${fmt(progress.best[quest])}초 ${starStr(progress.stars[quest])}`;
   $('startBtn').textContent = 'RETRY'; $('startBtn').disabled = false;
   $('nextBtn').style.display = quest < QUESTS.length ? 'inline-block' : 'none';
@@ -312,7 +312,7 @@ function loadTop() {
   if (location.protocol === 'file:') return;
   fetch(`/api/ranking?quest=${quest}`).then(r => r.json()).then(d => {
     const t = d.top && d.top[0];
-    $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
+    $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
   }).catch(() => {});
 }
 $('regBtn').onclick = () => {
