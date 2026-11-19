@@ -68,7 +68,7 @@
 
   <div class="quests" id="quests"></div>
   <div class="qinfo ui" id="qinfo"></div>
-  <label class="chk ui"><input type="checkbox" id="demo">  Demo (모든 퀘스트 열기)</label>
+  <label class="chk ui"><input type="checkbox" id="demo"> 🔓 Demo (모든 퀘스트 열기)</label>
 
   <canvas id="cv"></canvas>
 
@@ -81,6 +81,7 @@
   <div id="status"></div>
   <div class="btns">
     <button class="big" id="startBtn">START</button>
+    <button class="big alt" id="restartBtn" style="display:none">↺ 처음부터</button>
     <button class="big alt" id="nextBtn">NEXT ▶</button>
   </div>
 
@@ -158,7 +159,7 @@ const C = { wall: '#2e1a5e', floor: '#ede9fe', start: '#22c55e', goal: '#ef4444'
 const WALL_RATIO = 0.3;
 const cv = $('cv'), ctx = cv.getContext('2d');
 let quest = 1, N = 21, PX = 26, OX = [], SZ = [], grid, trail, pos, moves, shortest, t3 = 0, t2 = 0;
-let running = false, finished = false, dark = false, demo = false;
+let running = false, paused = false, finished = false, dark = false, demo = false;
 let t0 = 0, elapsed = 0, rafId = 0, lastResult = null, submitted = false;
 let progress = { stars: {}, best: {} };
 try { progress = Object.assign(progress, JSON.parse(localStorage.getItem('maze-dash') || '{}')); } catch (e) {}
@@ -213,7 +214,8 @@ function renderQuests() {
 
 function newMaze() {
   cancelAnimationFrame(rafId);
-  running = false; finished = false; submitted = false; lastResult = null;
+  running = false; paused = false; finished = false; submitted = false; lastResult = null;
+  $('restartBtn').style.display = 'none';
   const cfg = QUESTS[quest - 1];
   N = cfg.n; dark = cfg.dark;
   grid = genMaze(N, mulberry32(cfg.seed)); trail = new Uint8Array(N * N);
@@ -229,8 +231,8 @@ function newMaze() {
   t3 = Math.round(shortest * 0.25 * mul); t2 = Math.round(shortest * 0.5 * mul);
   $('timer').textContent = '0.00'; $('myMoves').textContent = 0;
   $('shortest').textContent = `(최단 ${shortest}칸)`;
-  $('qinfo').textContent = `QUEST ${quest} · ${TIER(quest - 1)}${dark ? ' ·  Dark Mode' : ''} · ${(N - 1) / 2}×${(N - 1) / 2}`;
-  $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
+  $('qinfo').textContent = `QUEST ${quest} · ${TIER(quest - 1)}${dark ? ' · 🌙 Dark Mode' : ''} · ${(N - 1) / 2}×${(N - 1) / 2}`;
+  $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내`;
   const myBest = progress.best[quest];
   $('best').textContent = myBest ? `내 최고 기록 ${fmt(myBest)}초 ${starStr(progress.stars[quest] || 1)}` : '';
   $('status').textContent = 'START를 누르면 타이머가 시작돼요.';
@@ -260,6 +262,7 @@ function move(dx, dy) {
 
 function win() {
   running = false; finished = true; cancelAnimationFrame(rafId);
+  $('restartBtn').style.display = 'none';
   elapsed = performance.now() - t0;
   const ms = Math.round(elapsed), sec = ms / 1000;
   $('timer').textContent = fmt(ms);
@@ -272,8 +275,8 @@ function win() {
   lastResult = { quest, moves, time_ms: ms };
   const allClear = QUESTS.every((_, i) => (progress.stars[i + 1] || 0) >= 1);
   $('status').textContent = quest === 10 && allClear
-    ? ` ALL CLEAR! ${starStr(stars)}`
-    : ` CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
+    ? `🏆 ALL CLEAR! ${starStr(stars)}`
+    : `🎉 CLEAR! ${fmt(ms)}초 ${starStr(stars)}`;
   $('best').textContent = `내 최고 기록 ${fmt(progress.best[quest])}초 ${starStr(progress.stars[quest])}`;
   $('startBtn').textContent = 'RETRY'; $('startBtn').disabled = false;
   $('nextBtn').style.display = quest < QUESTS.length ? 'inline-block' : 'none';
@@ -312,7 +315,7 @@ function loadTop() {
   if (location.protocol === 'file:') return;
   fetch(`/api/ranking?quest=${quest}`).then(r => r.json()).then(d => {
     const t = d.top && d.top[0];
-    $('goal').textContent = ` ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
+    $('goal').textContent = `🎯 ★★★ ${t3}초 이내 · ★★ ${t2}초 이내` + (t ? `  |  🥇 ${t.nickname} ${fmt(t.time_ms)}초` : '  |  아직 1등이 없어요!');
   }).catch(() => {});
 }
 $('regBtn').onclick = () => {
@@ -336,6 +339,7 @@ document.addEventListener('keydown', e => {
     if (e.target.id === 'nick') { e.preventDefault(); $('regBtn').click(); return; }
     e.preventDefault(); if (!running) $('startBtn').click(); return;
   }
+  if (e.key === 'Escape') { if (running) { e.preventDefault(); pauseGame(); } else if (paused) { e.preventDefault(); resumeGame(); } return; }   // Esc: 일시정지/계속
   if (e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') return;
   const d = KEYMAP[e.code]; if (!d) return;
   e.preventDefault(); move(d[0], d[1]);
@@ -351,15 +355,30 @@ document.querySelectorAll('.key').forEach(el => {
 
 /* ---------- 버튼 ---------- */
 $('startBtn').onclick = () => {
-  if (running) return;
+  if (running) { pauseGame(); return; }          // 진행 중에 누르면 일시정지
+  if (paused) { resumeGame(); return; }          // 일시정지 중에 누르면 이어서 하기
   if (finished) newMaze();                       // RETRY: 같은 퀘스트(같은 미로)를 처음부터
   running = true; t0 = performance.now();
-  $('status').textContent = 'GO! 방향키로 이동!';
-  $('startBtn').textContent = 'RUNNING...'; $('startBtn').disabled = true;
+  $('status').textContent = 'GO! 방향키로 이동! (일시정지: Esc)';
+  $('startBtn').textContent = '⏸ PAUSE'; $('startBtn').disabled = false;
+  $('restartBtn').style.display = 'inline-block';
   $('nextBtn').style.display = 'none'; $('reg').classList.remove('show');
   document.activeElement && document.activeElement.blur();
   rafId = requestAnimationFrame(loop);
 };
+function pauseGame() {
+  running = false; paused = true; cancelAnimationFrame(rafId);
+  elapsed = performance.now() - t0; $('timer').textContent = fmt(elapsed);
+  $('status').textContent = '⏸ 일시정지 중 · ▶ 계속(Enter/Esc) 또는 ↺ 처음부터';
+  $('startBtn').textContent = '▶ 계속';
+}
+function resumeGame() {
+  paused = false; running = true; t0 = performance.now() - elapsed;
+  $('status').textContent = 'GO! 방향키로 이동! (일시정지: Esc)';
+  $('startBtn').textContent = '⏸ PAUSE';
+  rafId = requestAnimationFrame(loop);
+}
+$('restartBtn').onclick = () => newMaze();       // 처음부터: 같은 퀘스트를 처음 상태로
 $('nextBtn').onclick = () => { if (quest < QUESTS.length) { quest++; newMaze(); } };
 $('resetBtn').onclick = e => {
   e.preventDefault();
